@@ -65,6 +65,7 @@ Data visualization can be found in the folder ``doc/nb``. Below is a list the th
 Executable Scripts (Work in Progress)
 -------------------------------------
 Python scripts can be found in the folder ``py/desiforecast``. Below is a list of the currently available scripts::
+
     query_database.py
     neural_network.py
 
