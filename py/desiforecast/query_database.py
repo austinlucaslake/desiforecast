@@ -13,16 +13,16 @@ import argparse
 parser = argparse.ArgumentParser(
                     prog = 'query_database',
                     description = 'This program will submit SQL queries to get DESI telemetry data')
-parser.add_argument('-m', '--machine-learning',
+parser.add_argument('-p', '--prediction-dataset',
                     action='store_true',
-                    help='Query the database and resample as needed for machine learning applications')
+                    help='Query the database and resample as needed for a temperature prediction algorithim')
 args = parser.parse_args()
-data_dir = f'./data'
-if not os.path.isdir(data_dir):
-    os.makedirs(data_dir)
+
+current_dir = os.path.dirname(os.path.realpath('__file__'))
+data_dir = os.path.join(current_dir, 'data')
 
 
-def save(data: pd.DataFrame, table: str) -> None:
+def save(data: pd.DataFrame, table_name: str) -> None:
     """Ramples DESI telemetry data contained within Pandas dataframe.
     
     Parameters
@@ -30,15 +30,18 @@ def save(data: pd.DataFrame, table: str) -> None:
     data : pandas.DataFrame
         Queried data from the DESI telemetry database
     
-    table : str
+    table_name : str
         Table name of data to save
     
     Returns
     -------
     None
     """
-    data = fits.table_to_hdu(Table.from_pandas(data))
-    data.writeto(f'{data_dir}/{table}.fits', overwrite=True)
+    extensions = '' if table_name[-4:] == '.pkl' else '.pkl'
+    data_file_path = os.path.join(data_dir, table_name, extension)
+    data.to_pickle(data_file_path)
+    # data = fits.table_to_hdu(Table.from_pandas(data))
+    # data.writeto(f'{data_dir}/{table}.fits', overwrite=True)
 
 def load(rows: np.ndarray, columns: list[str]) -> pd.DataFrame:
     """Preprocesses DESI telemetry data contained within Pandas dataframe.
@@ -58,12 +61,12 @@ def load(rows: np.ndarray, columns: list[str]) -> pd.DataFrame:
     """
     data = pd.DataFrame(rows, columns=columns)
     data.set_index('time_recorded', inplace=True)
-    data.index = data.index.strftime('%Y-%m-%dT%H:%M:%S.%f')
-    data = data.replace({pd.NA: np.nan})
-    data.index.name = 'time'
+    # data.index = data.index.strftime('%Y-%m-%dT%H:%M:%S.%f')
+    # data = data.replace({pd.NA: np.nan})
+    # data.index.name = 'time'
     data.sort_index(inplace=True)
-    data.reset_index(inplace=True)
-    data['time'] = data['time'].astype(str)
+    # data.reset_index(inplace=True)
+    # data['time_recorded'] = data['time_recorded'].astype(str)
     return data
 
 def resample(rows: np.ndarray, columns: list[str]) -> pd.DataFrame :
@@ -82,8 +85,8 @@ def resample(rows: np.ndarray, columns: list[str]) -> pd.DataFrame :
     data : pandas.DataFrame
         Resampled and interpolated DESI telemetry data
     """
+    data = pd.DataFrame(rows, columns=columns)
     data.set_index('time_recorded', inplace=True)
-    data.index.name = 'time'
     data.interpolate(limit_direction='both', inplace=True)
     data = data.resample('6S').mean()
     data = data.tz_convert("America/Phoenix")
@@ -103,10 +106,10 @@ def main() -> None:
     
     # Data table names and respective columns of interest
     labels = {}
-    labels['environmentmonitor_tower'] = ['time_recorded', 'temperature', 'pressure', 'humidity', 'wind_speed', 'wind_direction']
+    labels['environmentmonitor_tower'] = ['time_recorded', 'temperature', 'pressure', 'humidity', 'wind_speed', 'wind_direction', 'dewpoint']
     labels['environmentmonitor_dome'] = ['time_recorded', 'dome_left_upper', 'dome_left_lower', 'dome_right_upper', 'dome_right_lower', 'dome_back_upper', 'dome_back_lower', 'dome_floor_ne', 'dome_floor_nw', 'dome_floor_s']
-    labels['environmentmonitor_telescope'] = ['time_recorded', 'mirror_avg_temp', 'mirror_desired_temp', 'mirror_temp', 'mirror_cooling', 'air_temp', 'air_flow', 'air_dewpoint']
-    if not args.machine_learning:
+    labels['environmentmonitor_telescope'] = ['time_recorded', 'mirror_temp', 'mirror_cooling', 'air_temp', 'air_flow', 'air_dewpoint']
+    if not args.prediction_dataset:
         labels['etc_seeing'] = ['time_recorded', 'etc_seeing', 'seeing']
         labels['etc_telemetry'] = ['time_recorded', 'seeing', 'transparency', 'skylevel']
         labels['tcs_info'] = ['time_recorded', 'mirror_ready', 'airmass']
@@ -118,24 +121,22 @@ def main() -> None:
     user = 'desi_reader'
     password = 'reader'
     data = pd.DataFrame()
-    for table, columns in tqdm(labels.items(), desc='Querying database tables...'):
+    for table, columns in tqdm(labels.items(), desc='Querying database tables'):
         conn = psycopg2.connect(host=host, port=port, database=database, user=user, password=password)
         with conn:
             with conn.cursor() as cur:
                 cur.execute(f'SELECT {", ".join(columns)} FROM {table};')
                 rows = np.asarray(cur.fetchall())
-                if args.machine_learning:
+                if args.prediction_dataset:
                     if data.empty:
                         data = resample(rows=rows, columns=columns)
                     else:
-                        data = pd.merge(data, resample_data(rows=rows, columns=columns))
+                        data = pd.merge(data, resample(rows=rows, columns=columns))
                 else:
                     data = load(rows=rows, columns=columns)
                     save(data, table=table)
-    if args.machine_learning:
-        data.reset_index(inplace=True)
-        data['time'] = data['time'].astype(str)
-        save(data=data, table='desiforecast_ML_data')
+    if args.prediction_dataset:
+        save(data=data, table_name='prediction_dataset')
 
 if __name__ == '__main__':
     main()
