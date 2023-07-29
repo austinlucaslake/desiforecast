@@ -46,16 +46,11 @@ def load(rows: np.ndarray, columns: list[str]) -> pd.DataFrame:
     # Note: not entirely clear _why_ we are making some of these transformations,
     # but it is likely required to save into FITS format later.
     data = (
-        pd.DataFrame(
-            rows,
-            columns=columns
-        )
+        pd.DataFrame(rows, columns=columns)
         .sort_values("time_recorded")
         .replace({pd.NA: np.nan})
         .rename({"time_recorded": "time"})
-        .assign(
-            time=lambda df: df.strftime("%Y-%m-%dT%H:%M:%S.%f").astype(str)
-        )
+        .assign(time=lambda df: df.strftime("%Y-%m-%dT%H:%M:%S.%f").astype(str))
     )
     return data
 
@@ -124,4 +119,4 @@ def retrieve_and_store_data_from_database(settings: Settings) -> None:
                 cur.execute(f'SELECT {", ".join(columns)} FROM {table};')  # noqa: S608
                 rows = np.asarray(cur.fetchall())
                 data = load(rows=rows, columns=columns)
-                save(settings.output_folder ,data, table=table)
+                save(settings.output_folder, data, table=table)
