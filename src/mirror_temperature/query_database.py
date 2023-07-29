@@ -3,14 +3,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import psycopg2
-from astropy.io import fits
-from astropy.table import Table
 from tqdm import tqdm
 
 from mirror_temperature.settings import Settings
 
 
-def save(to: Path, data: pd.DataFrame, table: str) -> None:
+def save(output_folder: Path, data: pd.DataFrame, table: str) -> None:
     """Ramples DESI telemetry data contained within Pandas dataframe.
 
     Parameters
@@ -25,8 +23,7 @@ def save(to: Path, data: pd.DataFrame, table: str) -> None:
     -------
     None
     """
-    fits_table = fits.table_to_hdu(Table.from_pandas(data))
-    fits_table.writeto(to / f"{table}.fits", overwrite=True)
+    data.to_pickle(output_folder / f"{table}.pkl")
 
 
 def load(rows: np.ndarray, columns: list[str]) -> pd.DataFrame:
@@ -74,7 +71,6 @@ def retrieve_and_store_data_from_database(settings: Settings) -> None:
     -------
     None
     """
-
     # Data table names and respective columns of interest
     labels = {}
     labels["environmentmonitor_tower"] = [
