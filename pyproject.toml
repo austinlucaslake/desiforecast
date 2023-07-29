@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "mirror-temperature"
+version = "1.1.1"
+description = "Program for predicting which temperature the DESI mirror should be set to at night, in order to match air temperature the following morning"
+authors = ["Satya Gontcho A Gontcho <SatyaGontcho@lbl.gov>"]
+license = "BSD"
+readme = "README.md"
+packages = [{include = "mirror_temperature", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+psycopg2 = "^2.9.6"
+tqdm = "^4.65.0"
+numpy = "^1.25.1"
+pandas = "^2.0.3"
+astropy = "^5.3.1"
+pydantic = "^2.1.1"
+pydantic-settings = "^2.0.2"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.0.280"
+black = "^23.7.0"
+mypy = "^1.4.1"
+types-psycopg2 = "^2.9.21.11"
+types-tqdm = "^4.65.0.2"
+pandas-stubs = "^2.0.2.230605"
+
+
+[tool.ruff]
+fix = true
+src = ["src"]
+select = ["E", "F", "B", "Q", "I", "S", "W", "C90", "N", "BLE", "C4", "PTH"]
+
+
+[[tool.mypy.overrides]]
+module = 'astropy.*'
+ignore_missing_imports = true
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

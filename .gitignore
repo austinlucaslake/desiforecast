@@ -31,5 +31,7 @@ distribute-*.tar.gz
 *.csv
 .vscode
 
+.env
+
 # Mac OSX
 .DS_Store
