@@ -1,0 +1,32 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install poetry
+        run: pipx install poetry
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'poetry'
+      - name: Install dependencies
+        run: |
+          poetry install
+      - name: Lint
+        run: poetry run ruff check .
+      - name: Format code
+        run: poetry run black --check .
+      - name: Run static type checker
+        run: poetry run mypy .
